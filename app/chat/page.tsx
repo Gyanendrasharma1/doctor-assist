@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Mic, SendHorizontal } from "lucide-react";
+import { Settings, Mic, SendHorizontal, Plus } from "lucide-react";
 
 import SettingsPanel from "@/app/components/SettingsPanel";
 import PinModal from "@/app/components/PinModal";
@@ -11,7 +11,12 @@ import HistoryPanel from "@/app/components/HistoryPanel";
 
 type Role = "user" | "ai";
 type Msg = { role: Role; text: string };
-type StoredChat = { messages: Msg[]; createdAt: number };
+
+type StoredChat = {
+  messages: Msg[];
+  summary: string | null;
+  createdAt: number;
+};
 
 const genId = () =>
   Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -23,6 +28,7 @@ export default function Home() {
 
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [listening, setListening] = useState(false);
 
@@ -34,10 +40,12 @@ export default function Home() {
   const [activeChatId, setActiveChatId] = useState<string>("");
   const [storedChats, setStoredChats] = useState<Record<string, StoredChat>>({});
 
+  // init chat
   useEffect(() => {
     if (!activeChatId) setActiveChatId(genId());
   }, [activeChatId]);
 
+  // load from storage
   useEffect(() => {
     const raw = localStorage.getItem("doctor_chats");
     if (raw) setStoredChats(JSON.parse(raw));
@@ -48,25 +56,38 @@ export default function Home() {
     localStorage.setItem("doctor_chats", JSON.stringify(data));
   };
 
-  const saveMessage = (chatId: string, message: Msg) => {
+  const saveChat = (
+    chatId: string,
+    updater: (chat: StoredChat) => StoredChat
+  ) => {
     const data = { ...storedChats };
-    const chat = data[chatId] ?? { messages: [], createdAt: Date.now() };
-    chat.messages = [...chat.messages, message];
-    data[chatId] = chat;
+    const base: StoredChat =
+      data[chatId] ?? { messages: [], summary: null, createdAt: Date.now() };
+    data[chatId] = updater(base);
     persist(data);
   };
 
   const loadChat = (chatId: string) => {
     const chat = storedChats[chatId];
-    if (chat) {
-      setActiveChatId(chatId);
-      setMessages(chat.messages);
-    }
+    if (!chat) return;
+    setActiveChatId(chatId);
+    setMessages(chat.messages);
+    setSummary(chat.summary ?? null);
+  };
+
+  const startNewChat = () => {
+    const id = genId();
+    setActiveChatId(id);
+    setMessages([]);
+    setSummary(null);
   };
 
   const historyChats = Object.entries(storedChats).map(([id, chat]) => ({
     id,
-    title: chat.messages[0]?.text.slice(0, 30) || "New Chat",
+    title:
+      chat.summary?.slice(0, 40) ||
+      chat.messages[0]?.text.slice(0, 30) ||
+      "New Patient",
     date: new Date(chat.createdAt).toLocaleDateString(),
   }));
 
@@ -93,7 +114,11 @@ export default function Home() {
     const userMsg: Msg = { role: "user", text: userText };
 
     setMessages((p) => [...p, userMsg]);
-    saveMessage(activeChatId, userMsg);
+    saveChat(activeChatId, (c) => ({
+      ...c,
+      messages: [...c.messages, userMsg],
+    }));
+
     setInput("");
     setLoading(true);
 
@@ -101,23 +126,37 @@ export default function Home() {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText }),
+        body: JSON.stringify({
+          message: userText,
+          messages,
+          summary,
+        }),
         signal: abortRef.current.signal,
       });
 
       const data = await res.json();
 
-      const aiMsg: Msg = {
-        role: "ai",
-        text: data.reply || "No response",
-      };
-
-      setMessages((p) => [...p, aiMsg]);
-      saveMessage(activeChatId, aiMsg);
+      if (data.isSummary) {
+        setSummary(data.reply);
+        saveChat(activeChatId, (c) => ({ ...c, summary: data.reply }));
+      } else {
+        const aiMsg: Msg = {
+          role: "ai",
+          text: data.reply || "No response",
+        };
+        setMessages((p) => [...p, aiMsg]);
+        saveChat(activeChatId, (c) => ({
+          ...c,
+          messages: [...c.messages, aiMsg],
+        }));
+      }
     } catch {
       const errMsg: Msg = { role: "ai", text: "AI error" };
       setMessages((p) => [...p, errMsg]);
-      saveMessage(activeChatId, errMsg);
+      saveChat(activeChatId, (c) => ({
+        ...c,
+        messages: [...c.messages, errMsg],
+      }));
     } finally {
       setLoading(false);
     }
@@ -153,14 +192,26 @@ export default function Home() {
               <h1 className="tracking-[0.25em] text-xs text-gray-900">
                 DOCTOR AI ASSISTANT
               </h1>
-              <button onClick={() => setOpenSettings(true)}>
-                <Settings size={18} className="text-gray-700" />
-              </button>
+              <div className="flex gap-3">
+                <button onClick={startNewChat} title="New Patient">
+                  <Plus size={18} className="text-gray-700" />
+                </button>
+                <button onClick={() => setOpenSettings(true)}>
+                  <Settings size={18} className="text-gray-700" />
+                </button>
+              </div>
             </div>
           </header>
 
           <div className="flex-1 overflow-y-auto px-4 pt-6 pb-[110px]">
             <div className="max-w-7xl mx-auto space-y-6">
+              {summary && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl p-4">
+                  <strong>Patient Memory:</strong>
+                  <div className="mt-1 whitespace-pre-wrap">{summary}</div>
+                </div>
+              )}
+
               {messages.map((m, i) => (
                 <div
                   key={i}
@@ -179,6 +230,7 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+
               {loading && (
                 <p className="text-xs text-gray-600">AI thinking…</p>
               )}
