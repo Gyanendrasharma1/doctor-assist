@@ -1,28 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL as string;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
-const supabaseServiceRoleKey = process.env
-  .SUPABASE_SERVICE_ROLE_KEY as string;
+const supabaseUrl = process.env.SUPABASE_URL!;
+const anonKey = process.env.SUPABASE_ANON_KEY!;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-/**
- * PUBLIC CLIENT
- * - Frontend
- * - Read-only / user scoped
- */
-export const supabase = createClient(
-  supabaseUrl,
-  supabaseAnonKey
-);
+// Public client (read-only)
+export const supabase = createClient(supabaseUrl, anonKey);
 
-/**
- * SERVER-ONLY ADMIN CLIENT
- * - Signup
- * - Inserts
- * - Secure operations
- * ⚠️ NEVER use in frontend
- */
-export const supabaseAdmin = createClient(
-  supabaseUrl,
-  supabaseServiceRoleKey
-);
+// Admin client (server only)
+export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  auth: {
+    persistSession: false,
+  },
+});

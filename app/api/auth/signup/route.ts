@@ -1,59 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { supabaseAdmin } from "@/lib/supabase";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const { email, password } = body;
 
+    // Basic validation
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password required" },
+        { error: "Email and password are required" },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
-        { status: 400 }
-      );
-    }
+    // Hash password
+    const password_hash = await bcrypt.hash(password, 10);
 
-    // check existing doctor
-    const { data: existing } = await supabaseAdmin
+    // Insert doctor using SERVICE ROLE client (bypass RLS)
+    const { error } = await supabaseAdmin
       .from("doctors")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "Doctor already exists" },
-        { status: 409 }
-      );
-    }
-
-    const hash = await bcrypt.hash(password, 10);
-
-    const { error } = await supabaseAdmin.from("doctors").insert({
-      email,
-      password_hash: hash,
-    });
+      .insert({
+        email,
+        password_hash,
+      });
 
     if (error) {
-      console.error("Supabase insert error:", error);
+      console.error("Signup error:", error);
       return NextResponse.json(
         { error: "Failed to create doctor" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("Signup error:", err);
     return NextResponse.json(
-      { error: "Signup error" },
+      { success: true },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("Unexpected signup error:", err);
+    return NextResponse.json(
+      { error: "Server error" },
       { status: 500 }
     );
   }
