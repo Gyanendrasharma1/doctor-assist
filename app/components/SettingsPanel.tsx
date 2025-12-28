@@ -14,9 +14,20 @@ export default function SettingsPanel({
   onOpenHistory,
   onLogout,
 }: Props) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
-  const email = session?.user?.email ?? "Unknown doctor";
+  // 🔍 DEBUG LOG (browser console me dekhega)
+  console.log("SETTINGS PANEL SESSION:", session, status);
+
+  let emailText = "Unknown doctor";
+
+  if (status === "loading") {
+    emailText = "Loading session...";
+  } else if (session?.user?.email) {
+    emailText = session.user.email;
+  } else if (status === "unauthenticated") {
+    emailText = "Not logged in";
+  }
 
   return (
     <div
@@ -38,8 +49,15 @@ export default function SettingsPanel({
             <p className="text-sm font-medium text-gray-900">
               Doctor Profile
             </p>
-            <p className="text-xs text-gray-600">
-              {email}
+
+            {/* 🔥 VERY VISIBLE DEBUG TEXT */}
+            <p className="text-xs font-bold text-red-600">
+              {emailText}
+            </p>
+
+            {/* 🔍 STATUS DEBUG */}
+            <p className="text-[10px] text-gray-500">
+              session status: {status}
             </p>
           </div>
         </div>
