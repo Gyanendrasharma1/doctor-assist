@@ -16,18 +16,17 @@ export default function SettingsPanel({
 }: Props) {
   const { data: session, status } = useSession();
 
-  // 🔍 DEBUG LOG (browser console me dekhega)
-  console.log("SETTINGS PANEL SESSION:", session, status);
-
-  let emailText = "Unknown doctor";
-
   if (status === "loading") {
-    emailText = "Loading session...";
-  } else if (session?.user?.email) {
-    emailText = session.user.email;
-  } else if (status === "unauthenticated") {
-    emailText = "Not logged in";
+    return (
+      <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur">
+        <div className="absolute right-0 top-0 h-full w-full sm:w-96 bg-white/95 p-6">
+          <p className="text-sm text-gray-500">Loading profile…</p>
+        </div>
+      </div>
+    );
   }
+
+  const email = session?.user?.email ?? "Unknown doctor";
 
   return (
     <div
@@ -49,15 +48,8 @@ export default function SettingsPanel({
             <p className="text-sm font-medium text-gray-900">
               Doctor Profile
             </p>
-
-            {/* 🔥 VERY VISIBLE DEBUG TEXT */}
-            <p className="text-xs font-bold text-red-600">
-              {emailText}
-            </p>
-
-            {/* 🔍 STATUS DEBUG */}
-            <p className="text-[10px] text-gray-500">
-              session status: {status}
+            <p className="text-xs text-gray-600">
+              {email}
             </p>
           </div>
         </div>
