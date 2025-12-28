@@ -1,6 +1,7 @@
 "use client";
 
 import { User, LogOut, Clock } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type Props = {
   onClose: () => void;
@@ -13,6 +14,10 @@ export default function SettingsPanel({
   onOpenHistory,
   onLogout,
 }: Props) {
+  const { data: session } = useSession();
+
+  const email = session?.user?.email ?? "Unknown doctor";
+
   return (
     <div
       className="fixed inset-0 z-30 bg-black/40 backdrop-blur"
@@ -34,7 +39,7 @@ export default function SettingsPanel({
               Doctor Profile
             </p>
             <p className="text-xs text-gray-600">
-              logged-in@doctor.ai
+              {email}
             </p>
           </div>
         </div>
