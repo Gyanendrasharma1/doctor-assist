@@ -58,9 +58,9 @@ export default function SettingsPanel({
               Doctor Profile
             </p>
 
-            {/* 🔎 DEBUG + FINAL EMAIL */}
-            <p className="text-xs text-gray-600">
-              {email}
+            {/* 🔥 BUILD MARKER + EMAIL */}
+            <p className="text-xs font-bold text-red-600">
+              SETTINGS PANEL — BUILD CHECK — {email}
             </p>
           </div>
         </div>
