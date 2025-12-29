@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { User, LogOut, Clock } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -14,7 +15,12 @@ export default function SettingsPanel({
   onOpenHistory,
   onLogout,
 }: Props) {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
+
+  // 🔥 FORCE SESSION REFRESH ON MOUNT
+  useEffect(() => {
+    update();
+  }, [update]);
 
   if (status === "loading") {
     return (
@@ -26,7 +32,10 @@ export default function SettingsPanel({
     );
   }
 
-  const email = session?.user?.email ?? "Unknown doctor";
+  const email =
+    session?.user?.email && session.user.email !== "logged-in@doctor.ai"
+      ? session.user.email
+      : "—";
 
   return (
     <div
@@ -48,6 +57,8 @@ export default function SettingsPanel({
             <p className="text-sm font-medium text-gray-900">
               Doctor Profile
             </p>
+
+            {/* 🔎 DEBUG + FINAL EMAIL */}
             <p className="text-xs text-gray-600">
               {email}
             </p>
