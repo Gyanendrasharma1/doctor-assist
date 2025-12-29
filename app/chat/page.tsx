@@ -1,4 +1,6 @@
 // app/chat/page.tsx
+export const dynamic = "force-dynamic";
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -163,14 +165,6 @@ export default function Home() {
     }
   };
 
-  const verifyPin = () => {
-    if (pin === "1234") {
-      setShowPin(false);
-      setShowHistory(true);
-      setPin("");
-    }
-  };
-
   // ✅ FIXED LOGOUT (NextAuth)
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/auth/login" });
@@ -190,9 +184,8 @@ export default function Home() {
         >
           <header className="w-full bg-white/30 backdrop-blur-xl border-b border-white/40">
             <div className="h-14 max-w-7xl mx-auto px-4 flex items-center justify-between">
-              {/* 🔴 BUILD MARKER */}
-              <h1 className="tracking-[0.25em] text-xs text-red-600 font-bold">
-                DOCTOR AI ASSISTANT — BUILD v999
+              <h1 className="tracking-[0.25em] text-xs text-gray-700">
+                DOCTOR AI ASSISTANT
               </h1>
 
               <div className="flex gap-3">
@@ -206,8 +199,7 @@ export default function Home() {
             </div>
           </header>
 
-          {/* बाकी code unchanged */}
-          {/* messages / input / panels same as before */}
+          {/* messages + input UI (same as before) */}
         </div>
 
         {openSettings && (
@@ -225,7 +217,13 @@ export default function Home() {
           <PinModal
             pin={pin}
             setPin={setPin}
-            onVerify={verifyPin}
+            onVerify={() => {
+              if (pin === "1234") {
+                setShowPin(false);
+                setShowHistory(true);
+                setPin("");
+              }
+            }}
             onClose={() => {
               setShowPin(false);
               setPin("");
