@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { User, LogOut, Clock } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -15,16 +14,13 @@ export default function SettingsPanel({
   onOpenHistory,
   onLogout,
 }: Props) {
-  const { data: session, status, update } = useSession();
-
-  // 🔥 FORCE SESSION REFRESH ON MOUNT
-  useEffect(() => {
-    update();
-  }, [update]);
+  const { data: session, status } = useSession({
+    required: false,
+  });
 
   if (status === "loading") {
     return (
-      <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur">
+      <div className="fixed inset-0 z-30 bg-black/40">
         <div className="absolute right-0 top-0 h-full w-full sm:w-96 bg-white/95 p-6">
           <p className="text-sm text-gray-500">Loading profile…</p>
         </div>
@@ -32,14 +28,11 @@ export default function SettingsPanel({
     );
   }
 
-  const email =
-    session?.user?.email && session.user.email !== "logged-in@doctor.ai"
-      ? session.user.email
-      : "—";
+  const email = session?.user?.email ?? "—";
 
   return (
     <div
-      className="fixed inset-0 z-30 bg-black/40 backdrop-blur"
+      className="fixed inset-0 z-30 bg-black/40"
       onClick={onClose}
     >
       <div
@@ -57,10 +50,8 @@ export default function SettingsPanel({
             <p className="text-sm font-medium text-gray-900">
               Doctor Profile
             </p>
-
-            {/* 🔥 BUILD MARKER + EMAIL */}
-            <p className="text-xs font-bold text-red-600">
-              SETTINGS PANEL — BUILD CHECK — {email}
+            <p className="text-xs text-gray-600">
+              {email}
             </p>
           </div>
         </div>

@@ -9,8 +9,8 @@ export default function Providers({
 }) {
   return (
     <SessionProvider
-      refetchOnWindowFocus={true}
-      refetchInterval={30}
+      refetchInterval={0}
+      refetchOnWindowFocus={false}
     >
       {children}
     </SessionProvider>
