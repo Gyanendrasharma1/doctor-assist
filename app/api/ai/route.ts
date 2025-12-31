@@ -12,53 +12,98 @@ const RATE_WINDOW = 60 * 1000;
 
 // ---------------- SYSTEM PROMPT --------------------
 const SYSTEM_PROMPT = `
-You are an elite, world-class physician, surgeon, and clinical scientist with mastery across all medical domains.
+You are Doctor Assist — a professional clinical AI.
 
-You possess expert-level knowledge of:
-- Complete human anatomy
-- Physiology and pathophysiology
-- Clinical medicine and diagnostics
-- Surgery and practical decision-making
-- Pharmacology and therapeutics
-- Imaging, labs, emergency and critical care
-- Evidence-based medicine
+MANDATORY RESPONSE STYLE (NO EXCEPTIONS):
+- Clean, ChatGPT/Gemini-style structure
+- Short paragraphs
+- Clear section headings with emojis
+- Bullet points where helpful
+- Bold key medical terms
+- No wall of text
+- Simple, readable medical English
 
-You are designed exclusively for qualified medical doctors.
+RESPONSE STRUCTURE:
+### 🧠 Definition
+### 🔍 Common Causes / Types
+### ⚠️ Key Symptoms
+### 🩺 When to Seek Medical Care
+### 💊 Basic Management
+### 📌 Summary (2–3 lines only)
 
-Your role:
-- Act as a senior consultant and clinical co-pilot
-- Recall patient history across visits
-- Analyze disease progression
-- Support expert-level clinical reasoning
-
-Tone:
-- Senior consultant
-- Precise, structured, clinical
+RULES:
+- Do NOT write textbook dumps
+- Be concise and clinically accurate
+- No disclaimers
+- No unnecessary complexity
 `;
-// ---------------------------------------------------
-
 // ---------------- SUMMARY PROMPT -------------------
 const SUMMARY_PROMPT = `
-You are a senior physician creating a concise clinical patient summary.
+You are a senior attending physician generating an INTERNAL clinical summary
+for continuity of care and medical decision-making.
+This summary is NOT patient-facing.
 
-Create a structured medical summary including:
-- Chief complaints and timeline
-- Key neurological / systemic findings
-- Important investigations discussed
-- Clinical reasoning and impressions
-- Current status and plan (if mentioned)
+OBJECTIVE:
+Create a precise, structured medical summary that allows another clinician
+to instantly understand the case without reading the full conversation.
 
-Rules:
-- Use medical terminology
-- Be concise and clinically accurate
-- No patient-facing explanations
+CONTENT TO INCLUDE (MANDATORY):
+
+1. **Chief Complaint**
+   - Primary symptom(s)
+   - Duration and progression (acute, subacute, chronic)
+   - Triggering or relieving factors if mentioned
+
+2. **History of Present Illness (HPI)**
+   - Symptom chronology
+   - Severity and pattern
+   - Associated symptoms
+   - Relevant negatives (important symptoms explicitly denied)
+
+3. **Relevant Medical Context**
+   - Past medical history if mentioned
+   - Risk factors (e.g., age-related, vascular, infectious, metabolic)
+   - Medication or treatment already taken (if any)
+
+4. **Key Clinical Findings**
+   - Red flags or alarming features
+   - Localization clues
+   - Pattern recognition suggesting specific diagnoses
+
+5. **Differential Diagnosis (Prioritized)**
+   - Most likely diagnosis first
+   - 2–4 alternatives if relevant
+   - Brief reasoning for each (one line max)
+
+6. **Investigations / Workup**
+   - Tests already done (if mentioned)
+   - Tests that would be clinically indicated
+   - Imaging/labs when relevant
+
+7. **Assessment**
+   - Clinical impression
+   - Level of certainty (e.g., likely, possible, unclear)
+
+8. **Current Plan / Next Steps**
+   - Immediate management
+   - Monitoring or follow-up
+   - Escalation criteria
+
+RULES (STRICT):
+- Use professional medical terminology only
+- No explanations for patients
+- No emojis
+- No conversational language
+- No disclaimers
 - No speculation beyond provided data
+- Be concise but complete
+- Write in bullet points or short paragraphs
+- This summary will be stored as long-term clinical memory
 `;
 // ---------------------------------------------------
 
 export async function POST(req: NextRequest) {
   try {
-    // ---------- RATE LIMIT ----------
     const ip =
       req.headers.get("x-forwarded-for") ||
       req.headers.get("x-real-ip") ||
@@ -73,7 +118,7 @@ export async function POST(req: NextRequest) {
       if (now - entry.startTime < RATE_WINDOW) {
         if (entry.count >= RATE_LIMIT) {
           return NextResponse.json(
-            { error: "Too many requests. Slow down." },
+            { error: "Too many requests" },
             { status: 429 }
           );
         }
@@ -82,29 +127,19 @@ export async function POST(req: NextRequest) {
         rateLimitMap.set(ip, { count: 1, startTime: now });
       }
     }
-    // --------------------------------
 
-    // ---------- INPUT ----------
-    let body;
-    try {
-      body = await req.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
-
+    const body = await req.json();
     const { message, messages = [], summary = "" } = body;
 
-    if (typeof message !== "string") {
-      return NextResponse.json({ error: "Message must be string" }, { status: 400 });
+    if (!message || typeof message !== "string") {
+      return NextResponse.json({ error: "Invalid message" }, { status: 400 });
     }
 
     const trimmedMessage = message.trim();
     if (!trimmedMessage) {
       return NextResponse.json({ error: "Empty message" }, { status: 400 });
     }
-    // --------------------------------
 
-    // ---------- SUMMARY COMMAND ----------
     const isSummaryCommand =
       /summarize|summary|patient memory/i.test(trimmedMessage);
 
@@ -133,15 +168,13 @@ export async function POST(req: NextRequest) {
         summaryData?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       return NextResponse.json({
-        reply: summaryText || "Unable to generate summary",
+        reply: summaryText || "Summary unavailable",
         isSummary: true,
       });
     }
-    // ------------------------------------
 
-    // ---------- NORMAL CHAT (WITH MEMORY) ----------
     const contextualPrompt = summary
-      ? `Patient Clinical Memory:\n${summary}\n\nDoctor Query:\n${trimmedMessage}`
+      ? `Clinical Memory:\n${summary}\n\nQuery:\n${trimmedMessage}`
       : trimmedMessage;
 
     const res = await fetch(
@@ -163,9 +196,8 @@ export async function POST(req: NextRequest) {
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     return NextResponse.json({ reply: text || "No response" });
-    // ------------------------------------
   } catch (err) {
-    console.error("API Error:", err);
+    console.error(err);
     return NextResponse.json({ error: "AI error" }, { status: 500 });
   }
 }

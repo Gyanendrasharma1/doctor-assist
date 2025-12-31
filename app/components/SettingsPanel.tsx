@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, Clock } from "lucide-react";
+import { User, LogOut, Clock, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 type Props = {
@@ -14,9 +14,7 @@ export default function SettingsPanel({
   onOpenHistory,
   onLogout,
 }: Props) {
-  const { data: session, status } = useSession({
-    required: false,
-  });
+  const { data: session, status } = useSession({ required: false });
 
   if (status === "loading") {
     return (
@@ -39,7 +37,22 @@ export default function SettingsPanel({
         className="absolute right-0 top-0 h-full w-full sm:w-96 bg-white/95 p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="tracking-widest text-sm text-gray-900 mb-6">
+        {/* MOBILE HEADER */}
+        <div className="flex items-center justify-between mb-6 sm:hidden">
+          <h2 className="text-sm font-semibold tracking-wide text-gray-900">
+            Settings
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-gray-100"
+            aria-label="Close settings"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* DESKTOP TITLE */}
+        <h2 className="hidden sm:block tracking-widest text-sm text-gray-900 mb-6">
           SETTINGS
         </h2>
 
